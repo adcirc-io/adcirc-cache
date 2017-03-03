@@ -26,23 +26,19 @@ function gl_cache ( gl ) {
 
     };
 
-    _cache.left = function ( cache_left ) {
-
-        // Defines a cache located to the left of this one
-
-    };
-
-    _cache.right = function ( cache_right ) {
-
-        // Defines a cache located to the right of this one
-
-    };
-
     _cache.shift_left = function () {
 
     };
 
+    _cache.shift_range = function () {
+
+    };
+
     _cache.shift_right = function () {
+
+    };
+
+    _cache.shift_size = function () {
 
     };
 

@@ -1,76 +1,193 @@
 
-function cache ( num_datasets ) {
+function cache ( num_datasets, total_datasets, getter, is_async ) {
 
-    var _map = Object.create( null );
-    var _data;
+    // Getter is a callback that can be passed an index range and loads the datasets in that range.
+    // If getter is not asynchronous, it must return a list of datasets.
+    // If getter is asynchronous, is_async should be set to true and the _cache.set function should be called
+    // externally for each individual dataset.
 
-    var _num_datapoints;    // The number of data points per dataset
-    var _num_datasets;      // The number of datasets contained in this cache
+    var _getter = getter;
+    var _async = !!is_async;
 
-    var _cache = function ( file ) {
+    var _num_datasets = num_datasets;
+    var _total_datasets = total_datasets;
+    var _start_id;
+    var _shift_size;
 
+    var _data = new Array( _num_datasets );
+    var _valid = new Array( _num_datasets ).fill( false );
 
+    var _cache = function () {};
+
+    _cache.fill = function ( range ) {
+
+        if ( range[1]-range[0] == _num_datasets ) {
+
+            // Fills cache with data from file, datasets [start,end)
+            _start_id = range[0];
+            if ( _async ) {
+                _getter( range );
+            } else {
+                _data = _getter( range );
+                _valid.fill( true );
+            }
+
+        } else {
+
+            console.error( 'Must fill cache with ' + _num_datasets + ' datasets' );
+
+        }
+
+        return _cache;
 
     };
 
-    _cache.dataset = function () {
+    _cache.get = function ( dataset_id ) {
 
-        // Gets the specified dataset(s) from cache.
-        // If the dataset(s) fall(s) outside of the shift range,
-        // causes the buffer to shift left or right.
+        if ( dataset_id >= _start_id && dataset_id < _start_id + _num_datasets ) {
+            return _data[ _index( dataset_id ) ];
+        }
 
-    };
-
-    _cache.fill = function () {
-
-        // Fills cache with data from file
+        console.error( 'Dataset ' + dataset_id + ' is not in the cache' );
 
     };
 
-    _cache.left = function ( cache_left ) {
+    _cache.has = function ( dataset_id ) {
 
-        // Defines a cache located to the left of this one
+        return dataset_id >= _start_id &&
+            dataset_id < _start_id + _num_datasets &&
+            _valid[ _index( dataset_id ) ];
 
     };
 
-    _cache.right = function ( cache_right ) {
+    _cache.set = function ( dataset_id, data ) {
 
-        // Defines a cache located to the right of this one
+        if ( typeof _start_id === 'undefined' ) {
+            console.error( 'Unable to cache dataset, cache has not yet been initialized' );
+            return _cache;
+        }
+
+        if ( dataset_id >= _start_id && dataset_id < _start_id + _num_datasets ) {
+            _data[ _index( dataset_id ) ] = data;
+            _valid[ _index( dataset_id ) ] = true;
+            console.log( _data );
+            console.log( _valid );
+        } else {
+            console.warn( 'Unable to cache dataset, it does not fall into the cache range' );
+        }
+
+        return _cache;
 
     };
 
     _cache.shift_left = function () {
 
+        if ( typeof _shift_size === 'undefined' ) {
+            console.error( 'Unable to shift, shift size undefined.' );
+            return _cache;
+        }
+
+        if ( _start_id == 0 ) return _cache;
+
+        var num_to_read = _shift_size;
+        var start = _start_id - num_to_read;
+
+        if ( start < 0 ) {
+            num_to_read += start;
+            start = 0;
+        }
+
+        var end = start + num_to_read;
+        var range = [ start, end ];
+        var range_invalidate = [ _start_id+_num_datasets-num_to_read, _start_id+_num_datasets ];
+
+        _start_id -= num_to_read;
+        _invalidate( range_invalidate );
+        _fetch( range );
+
+        return _cache;
+
     };
 
-    _cache.shift_range = function () {
-
-        // Defines the shift range based on the number of datasets.
-        // Values are inclusive left, exclusive right, so [2, 8]
-        // sets the range to be indices 2 through 7
-        //
-        // e.g. num_datasets = 10, shift_range = [ 2, 8 ]
-        // [ . . . . . . . . . . ]  <- datasets
-        // [ . . | | | | | | . . ]  <- shift range
-        //
-        // If any of the vertical lines are requested, they are simply
-        // returned. Any outside of the ones outside will cause a shift
-        // in the appropriate direction by shift_size datasets.
-
-    };
-
-    _cache.shift_size = function () {
+    _cache.shift_size = function ( shift_size ) {
 
         // Defines the number of datasets to shift by. Maximum
-        // is the total number of datasets in the shift window.
+        // is the total number of datasets minus 1.
+        if ( shift_size > _num_datasets ) {
+            console.warn( 'Maximum shift size is ' + _num_datasets + '. Using maximum.' );
+            shift_size = _num_datasets;
+        }
+
+        _shift_size = shift_size;
+        return _cache;
 
     };
 
     _cache.shift_right = function () {
 
+        if ( typeof _shift_size === 'undefined' ) {
+            console.error( 'Unable to shift, shift size undefined.' );
+            return _cache;
+        }
+
+        if ( _start_id + _num_datasets == _total_datasets ) return _cache;
+
+        var num_to_read = _shift_size;
+        var end = _start_id + _num_datasets + _shift_size;
+
+        if ( end > _total_datasets ) {
+
+            num_to_read -= ( end - _total_datasets );
+            end = _total_datasets;
+
+        }
+
+        var start = end - num_to_read;
+        var range = [ start, end ];
+        var range_invalidate = [ _start_id, _start_id+num_to_read ];
+
+        _start_id += num_to_read;
+        _invalidate( range_invalidate );
+        _fetch( range );
+
+        return _cache;
+
     };
 
+    _cache.print = function ( label ) {
+        console.log( label + ': ' + _data );
+        return _cache;
+    };
 
     return _cache;
 
+    function _fetch ( range ) {
+
+        if ( _async ) {
+            _getter( range );
+        } else {
+            var data = _getter( range );
+            for ( var i=0; i<range[1]-range[0]; ++i ) {
+                _cache.set( range[0] + i, data[i] );
+            }
+        }
+
+    }
+
+    function _index ( dataset_id ) {
+
+        return dataset_id % _num_datasets;
+
+    }
+
+    function _invalidate ( range ) {
+
+        for ( var i=0; i<range[1]-range[0]; ++i ) {
+            _valid[ _index( range[0] + i ) ] = false;
+        }
+
+    }
+
 }
+
+export { cache };
