@@ -1,0 +1,50 @@
+body {
+    min-width: 600px;
+    margin: auto;
+}
+
+.content {
+    min-width: 600px;
+    max-width: 900px;
+    margin: auto;
+}
+
+.bar-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 50px;
+    border: 1px solid white;
+}
+
+.bar-section {
+    min-height: 50px;
+    flex: 1 0 0;
+    display: flex;
+    align-items: center;
+}
+
+.bar {
+    font-family: sans-serif;
+    font-size: 10px;
+    flex: 1 0 0;
+    min-height: 30px;
+    border: 1px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bar.special {
+    align-self: flex-end;
+}
+
+.bar:not(.active):hover {
+    cursor: pointer;
+    opacity: 0.8;
+    min-height: 34px;
+}
+
+.bar.active {
+    min-height: 50px;
+}
