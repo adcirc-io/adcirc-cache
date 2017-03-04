@@ -48,6 +48,8 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
             return _data[ _index( dataset_id ) ];
         }
 
+        // Think about allowing any dataset request and shifting cache automatically
+
         console.error( 'Dataset ' + dataset_id + ' is not in the cache' );
 
     };
@@ -110,6 +112,8 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
     };
 
     _cache.shift_size = function ( shift_size ) {
+
+        if ( !arguments.length ) return _shift_size;
 
         // Defines the number of datasets to shift by. Maximum
         // is the total number of datasets minus 1.
