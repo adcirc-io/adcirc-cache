@@ -5,24 +5,22 @@ var cache_size = 9;
 var bar = d3.select( '#bar' )
     .append( 'div' )
     .attr( 'class', 'bar-section' );
+var bars;
 
 var cache = adcirc
     .cache( cache_size, dataset_size, dummy, false )
+    .addEventListener( 'debug', display_cache )
     .padding_left( 2 )
     .padding_right( 2 )
     .shift_size( 4 );
 
-cache.addEventListener( 'debug', function ( e ) {
-        display_cache( e );
-    });
+var gl_cache = adcirc
+    .gl_cached_buffer( 0, 0, cache, 3, 100 )
+    .addEventListener( 'debug', display_cache );
 
-cache
-    .fill( [0, cache_size] );
 
 var current = 0;
 
-d3.select( '#shift-left' ).on( 'click', cache.shift_left );
-d3.select( '#shift-right' ).on( 'click', cache.shift_right );
 d3.select( '#move-left' ).on( 'click', move_left );
 d3.select( '#move-right' ).on( 'click', move_right );
 d3.select( 'body' ).on( 'keydown', function () {
@@ -39,21 +37,47 @@ d3.select( 'body' ).on( 'keydown', function () {
 
 function move_right () {
     if ( current+1 < dataset_size )
-        cache.get( ++current );
+        gl_cache.current( ++current );
 }
 
 function move_left () {
     if ( current-1 >= 0 )
-        cache.get( --current );
+        gl_cache.current( --current );
 }
 
 function display_cache ( e ) {
 
-    var selection = display_data( e.data_range );
+    if ( e.from == 'cache' ) {
 
-    color_cache( selection, e.cache_range );
-    color_padding( selection, e.padding );
-    color_current( selection, e.current );
+        cache.print();
+        bars = display_data(e.data_range);
+
+        color_cache( bars, e.cache_range );
+        color_padding( bars, e.padding );
+        color_current( bars, e.current );
+
+    }
+
+    if ( e.from == 'gl' ) {
+
+        color_gl( bars, e.cache_range );
+
+    }
+
+}
+
+function color_gl ( selection, range ) {
+
+    selection.each( function ( d ) {
+        if ( in_range( d, range ) ) {
+            d3.select( this )
+                .classed( 'special', true )
+                .style( 'background-color', 'steelblue' );
+        } else {
+            d3.select( this )
+                .classed( 'special', false );
+        }
+    })
 
 }
 

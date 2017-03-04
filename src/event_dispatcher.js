@@ -3,15 +3,13 @@
  * @author atdyer / https://github.com/atdyer
  */
 
-var EventDispatcher = function () {};
+function make_event_dispatcher ( object ) {
 
-Object.assign( EventDispatcher.prototype, {
+    object.addEventListener = function ( type, listener ) {
 
-    addEventListener: function ( type, listener ) {
+        if ( object._listeners === undefined ) object._listeners = {};
 
-        if ( this._listeners === undefined ) this._listeners = {};
-
-        var listeners = this._listeners;
+        var listeners = object._listeners;
 
         if ( listeners[ type ] === undefined ) {
 
@@ -25,23 +23,25 @@ Object.assign( EventDispatcher.prototype, {
 
         }
 
-    },
+        return object;
 
-    hasEventListener: function ( type, listener ) {
+    };
 
-        if ( this._listeners === undefined ) return false;
+    object.hasEventListener = function ( type, listener ) {
 
-        var listeners = this._listeners;
+        if ( object._listeners === undefined ) return false;
+
+        var listeners = object._listeners;
 
         return ( listeners[ type ] !== undefined && listeners[ type ].indexOf( listener ) !== -1 );
 
-    },
+    };
 
-    removeEventListener: function ( type, listener ) {
+    object.removeEventListener = function ( type, listener ) {
 
-        if ( this._listeners === undefined ) return;
+        if ( object._listeners === undefined ) return;
 
-        var listeners = this._listeners;
+        var listeners = object._listeners;
         var listenerArray = listeners[ type ];
 
         if ( listenerArray !== undefined ) {
@@ -56,18 +56,20 @@ Object.assign( EventDispatcher.prototype, {
 
         }
 
-    },
+        return object;
 
-    dispatchEvent: function ( event ) {
+    };
 
-        if ( this._listeners === undefined ) return;
+    object.dispatchEvent = function ( event ) {
 
-        var listeners = this._listeners;
+        if ( object._listeners === undefined ) return;
+
+        var listeners = object._listeners;
         var listenerArray = listeners[ event.type ];
 
         if ( listenerArray !== undefined ) {
 
-            event.target = this;
+            event.target = object;
 
             var array = [], i = 0;
             var length = listenerArray.length;
@@ -80,14 +82,19 @@ Object.assign( EventDispatcher.prototype, {
 
             for ( i = 0; i < length; i ++ ) {
 
-                array[ i ].call( this, event );
+                array[ i ].call( object, event );
 
             }
 
         }
 
-    }
+        return object;
 
-});
+    };
 
-export { EventDispatcher }
+    return object;
+
+}
+
+
+export { make_event_dispatcher }
