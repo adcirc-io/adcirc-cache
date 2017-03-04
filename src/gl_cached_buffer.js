@@ -1,3 +1,5 @@
+import { EventDispatcher } from './event_dispatcher'
+
 
 function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
     
@@ -8,10 +10,14 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
     var _dataset_size = dataset_size;
     var _accessor = function ( d ) { return d; };
 
-    var _current_dataset;
+    var _start_id;
     var _shift_size;
+    var _padding_left;
+    var _padding_right;
 
     var _cached_buffer = function () {};
+    Object.assign( _cached_buffer, EventDispatcher.prototype );
+
 
     _cached_buffer.accessor = function ( accessor ) {
 
@@ -21,11 +27,23 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
         return _cached_buffer;
     };
 
-    _cached_buffer.dataset = function ( index ) {
+    _cached_buffer.dataset = function ( dataset_id ) {
 
         // Sets the currently in use dataset
 
         // If the dataset is somewhere in the gl_buffer, returns the range to render
+        if ( dataset_id >= _start_id && dataset_id < _start_id + _num_datasets ) {
+
+            // Check if we need to do a local shift
+            if ( dataset_id < _start_id + _padding_left ) {
+                _shift_left();
+            }
+            if ( dataset_id > _start_id + _num_datasets - _padding_right ) {
+                _shift_right();
+            }
+
+            return [ _index( dataset_id ), _index( dataset_id ) + _dataset_size ];
+        }
 
         // If the dataset is not in the gl_buffer range, but is within the cache,
         // move to that position in the cache and load data to gl_buffer

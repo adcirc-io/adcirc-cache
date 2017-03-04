@@ -1,3 +1,5 @@
+import { EventDispatcher } from './event_dispatcher'
+
 
 function cache ( num_datasets, total_datasets, getter, is_async ) {
 
@@ -11,13 +13,17 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
 
     var _num_datasets = num_datasets;
     var _total_datasets = total_datasets;
+    var _current_id = 0;
     var _start_id;
     var _shift_size;
+    var _padding_left = 0;
+    var _padding_right = 0;
 
     var _data = new Array( _num_datasets );
     var _valid = new Array( _num_datasets ).fill( false );
 
     var _cache = function () {};
+    Object.assign( _cache, EventDispatcher.prototype );
 
     _cache.fill = function ( range ) {
 
@@ -38,6 +44,7 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
 
         }
 
+        _debug();
         return _cache;
 
     };
@@ -45,6 +52,17 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
     _cache.get = function ( dataset_id ) {
 
         if ( dataset_id >= _start_id && dataset_id < _start_id + _num_datasets ) {
+
+            // Check if we need to do a local shift
+            if ( dataset_id < _start_id + _padding_left ) {
+                _cache.shift_left();
+            }
+            if ( dataset_id > _start_id + _num_datasets - _padding_right ) {
+                _cache.shift_right();
+            }
+
+            _current_id = dataset_id;
+            _debug();
             return _data[ _index( dataset_id ) ];
         }
 
@@ -62,6 +80,24 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
 
     };
 
+    _cache.padding_left = function ( padding ) {
+        if ( padding >= 0 && padding <= _num_datasets-_padding_right-1) {
+            _padding_left = padding;
+        } else {
+            console.warn( 'Invalid left padding' );
+        }
+        return _cache;
+    };
+
+    _cache.padding_right = function ( padding ) {
+        if ( padding >= 0 && padding <= _num_datasets-_padding_left-1 ) {
+            _padding_right = padding+1;
+        } else {
+            console.warn( 'Invalid right padding' );
+        }
+        return _cache;
+    };
+
     _cache.set = function ( dataset_id, data ) {
 
         if ( typeof _start_id === 'undefined' ) {
@@ -72,8 +108,6 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
         if ( dataset_id >= _start_id && dataset_id < _start_id + _num_datasets ) {
             _data[ _index( dataset_id ) ] = data;
             _valid[ _index( dataset_id ) ] = true;
-            console.log( _data );
-            console.log( _valid );
         } else {
             console.warn( 'Unable to cache dataset, it does not fall into the cache range' );
         }
@@ -107,6 +141,7 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
         _invalidate( range_invalidate );
         _fetch( range );
 
+        _debug();
         return _cache;
 
     };
@@ -154,6 +189,7 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
         _invalidate( range_invalidate );
         _fetch( range );
 
+        _debug();
         return _cache;
 
     };
@@ -164,6 +200,16 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
     };
 
     return _cache;
+
+    function _debug () {
+        _cache.dispatchEvent({
+            type: 'debug',
+            current: _current_id,
+            cache_range: [ _start_id, _start_id + _num_datasets ],
+            data_range: [ 0, _total_datasets ],
+            padding: [ _start_id + _padding_left, _start_id + _num_datasets - _padding_right ]
+        });
+    }
 
     function _fetch ( range ) {
 

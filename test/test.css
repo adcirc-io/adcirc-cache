@@ -9,12 +9,18 @@ body {
     margin: auto;
 }
 
+.center {
+    display: flex;
+    justify-content: center;
+}
+
 .bar-container {
     display: flex;
     align-items: center;
     width: 100%;
     min-height: 50px;
     border: 1px solid white;
+    padding: 10px 0 10px 0;
 }
 
 .bar-section {

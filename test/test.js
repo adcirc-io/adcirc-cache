@@ -1,47 +1,132 @@
+var dataset_size = 27;
+var cache_size = 9;
+
+
+var bar = d3.select( '#bar' )
+    .append( 'div' )
+    .attr( 'class', 'bar-section' );
 
 var cache = adcirc
-    .cache( 5, 10, dummy, false )
-    .shift_size( 3 );
+    .cache( cache_size, dataset_size, dummy, false )
+    .padding_left( 2 )
+    .padding_right( 2 )
+    .shift_size( 4 );
 
-var cache_async = adcirc
-    .cache( 5, 10, dummy_async, true )
-    .shift_size( 3 );
+cache.addEventListener( 'debug', function ( e ) {
+        display_cache( e );
+    });
 
-
-console.log( 'Fill caches' );
 cache
-    .fill( [0, 5] )
-    .print( ' sync' );
+    .fill( [0, cache_size] );
 
-cache_async
-    .fill( [0, 5] )
-    .print( 'async' );
+var current = 0;
 
-console.log( 'Shift right' );
-cache
-    .shift_right()
-    .print( ' sync' );
+d3.select( '#shift-left' ).on( 'click', cache.shift_left );
+d3.select( '#shift-right' ).on( 'click', cache.shift_right );
+d3.select( '#move-left' ).on( 'click', move_left );
+d3.select( '#move-right' ).on( 'click', move_right );
+d3.select( 'body' ).on( 'keydown', function () {
+    switch ( d3.event.key ) {
+        case 'ArrowRight':
+            move_right();
+            break;
+        case 'ArrowLeft':
+            move_left();
+            break;
+    }
+});
 
-cache_async
-    .shift_right()
-    .print( 'async' );
 
+function move_right () {
+    if ( current+1 < dataset_size )
+        cache.get( ++current );
+}
 
-function dummy ( range ) {
+function move_left () {
+    if ( current-1 >= 0 )
+        cache.get( --current );
+}
+
+function display_cache ( e ) {
+
+    var selection = display_data( e.data_range );
+
+    color_cache( selection, e.cache_range );
+    color_padding( selection, e.padding );
+    color_current( selection, e.current );
+
+}
+
+function color_cache ( selection, range ) {
+
+    selection.each( function ( d ) {
+
+        if ( in_range( d, range ) ) {
+            d3.select( this )
+                .style( 'background-color', 'lightsteelblue' );
+        }
+
+    });
+
+}
+
+function color_padding ( selection, range ) {
+
+    selection.each( function ( d ) {
+
+        if ( d !== range[0] || range[1] )
+            d3.select( this ).style( 'border-left', null ).style( 'border-right', null );
+        if ( d == range[0] )
+            d3.select( this ).style( 'border-left', '3px solid black' );
+        if ( d == range[1] )
+            d3.select( this ).style( 'border-right', '3px solid black' );
+
+    });
+
+}
+
+function color_current ( selection, current ) {
+
+    selection.each( function ( d ) {
+
+        if ( d == current )
+            d3.select( this ).classed( 'active', true );
+        else
+            d3.select( this ).classed( 'active', false );
+
+    })
+
+}
+
+function display_data ( range ) {
+
     var data = [];
     for ( var i=range[0]; i<range[1]; ++i ) {
         data.push( i );
     }
-    return data;
+
+    var select = bar.selectAll( '.bar' )
+        .data( data );
+
+    select.exit()
+        .remove();
+
+    select = select.enter()
+        .append( 'div' )
+        .attr( 'class', 'bar' )
+        .merge( select );
+
+    select
+        .text( function ( d ) { return d; } )
+        .style( 'background-color', 'lightgoldenrodyellow' );
+
+    return select;
+
 }
 
-function dummy_async ( range ) {
-    for ( var i=range[0]; i<range[1]; ++i ) {
-        cache_async.set( i, i );
-    }
+function in_range ( d, range ) {
+    return d >= range[0] && d < range[1];
 }
-
-render();
 
 function render () {
 
@@ -90,5 +175,42 @@ function render () {
                 .classed( 'active', true );
         });
 
+}
+//
+// var cache_async = adcirc
+//     .cache( 5, 10, dummy_async, true )
+//     .shift_size( 3 );
+//
+//
+// console.log( 'Fill caches' );
+// cache
+//     .fill( [0, 5] )
+//     .print( ' sync' );
+//
+// cache_async
+//     .fill( [0, 5] )
+//     .print( 'async' );
+//
+// console.log( 'Shift right' );
+// cache
+//     .shift_right()
+//     .print( ' sync' );
+//
+// cache_async
+//     .shift_right()
+//     .print( 'async' );
+//
+//
+function dummy ( range ) {
+    var data = [];
+    for ( var i=range[0]; i<range[1]; ++i ) {
+        data.push( i );
+    }
+    return data;
+}
 
+function dummy_async ( range ) {
+    for ( var i=range[0]; i<range[1]; ++i ) {
+        cache_async.set( i, i );
+    }
 }
