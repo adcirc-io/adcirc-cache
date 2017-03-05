@@ -15,7 +15,7 @@ var cache = adcirc
     .shift_size( 4 );
 
 var gl_cache = adcirc
-    .gl_cached_buffer( 0, 0, cache, 3, 100 )
+    .gl_cached_buffer( 0, 0, cache, 3, 1 )
     .addEventListener( 'debug', display_cache );
 
 
@@ -60,7 +60,9 @@ function display_cache ( e ) {
 
     if ( e.from == 'gl' ) {
 
-        color_gl( bars, e.cache_range );
+        var gl_bars = color_gl( bars, e.cache_range );
+        console.log( gl_bars.each( function ( d ) { console.log( 'fart: ' + d ); } ));
+        color_gl_padding( gl_bars, e.padding )
 
     }
 
@@ -77,6 +79,25 @@ function color_gl ( selection, range ) {
             d3.select( this )
                 .classed( 'special', false );
         }
+    });
+
+    return selection.filter( '.special' );
+
+}
+
+function color_gl_padding ( selection, range ) {
+
+    console.log( range );
+
+    selection.each( function ( d ) {
+
+        if ( d !== range[0] || range[1] )
+            d3.select( this ).classed( 'special-border-left', false ).classed( 'special-border-right', false );
+        if ( d == range[0] )
+            d3.select( this ).classed( 'special-border-left', true );
+        if ( d == range[1] )
+            d3.select( this ).classed( 'special-border-right', true );
+
     })
 
 }
@@ -99,11 +120,11 @@ function color_padding ( selection, range ) {
     selection.each( function ( d ) {
 
         if ( d !== range[0] || range[1] )
-            d3.select( this ).style( 'border-left', null ).style( 'border-right', null );
+            d3.select( this ).classed( 'border-left', false ).classed( 'border-right', false );
         if ( d == range[0] )
-            d3.select( this ).style( 'border-left', '3px solid black' );
+            d3.select( this ).classed( 'border-left', true );
         if ( d == range[1] )
-            d3.select( this ).style( 'border-right', '3px solid black' );
+            d3.select( this ).classed( 'border-right', true );
 
     });
 

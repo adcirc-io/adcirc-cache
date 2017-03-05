@@ -45,6 +45,44 @@ body {
     align-self: flex-end;
 }
 
+.bar.border-left,
+.bar.border-left.special-border-left {
+    border-left: 3px solid black;
+}
+
+.bar.border-right,
+.bar.border-right.special-border-right {
+    border-right: 3px solid black;
+}
+
+.bar.special-border-left,
+.bar.border-left.special-border-left:before {
+    border-left: 2px solid red;
+}
+
+.bar.special-border-right,
+.bar.border-right.special-border-right:before {
+    border-right: 2px solid red;
+}
+
+.bar.border-left.special-border-left,
+.bar.border-right.special-border-right {
+    position: relative;
+}
+
+.bar.border-left.special-border-left:before,
+.bar.border-right.special-border-right:before {
+    background: none;
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
 .bar:not(.active):hover {
     cursor: pointer;
     opacity: 0.8;

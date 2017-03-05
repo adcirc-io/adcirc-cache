@@ -11,6 +11,8 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
     var _padding_left = 1;
     var _padding_right = 2;
 
+    var dbg_data = new Array( num_datasets );
+
     var _cached_buffer = function () {};
     make_event_dispatcher( _cached_buffer );
 
@@ -30,6 +32,9 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
 
         // Sets the currently in use dataset
 
+        // Return if no change
+        if ( dataset_id == _current_id ) return [ _index( dataset_id ), _index( dataset_id ) + dataset_size ];
+
         // If the dataset is somewhere in the gl_buffer, returns the range to render
         if ( dataset_id >= _start_id && dataset_id < _start_id + num_datasets ) {
 
@@ -44,6 +49,8 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
             cache.current( dataset_id );
             _current_id = dataset_id;
             _debug();
+
+            console.log( dbg_data );
 
             return [ _index( dataset_id ), _index( dataset_id ) + dataset_size ];
         }
@@ -61,6 +68,39 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
 
         // If we load a dataset within padding datasets of the left edge,
         // shift the gl_buffer cache to the left
+
+    };
+
+    // Gets the current range of datasets or sets the current range and fills the buffer
+    _cached_buffer.range = function ( range ) {
+
+        if ( !arguments.length ) return [ _start_id, _start_id + num_datasets ];
+
+        var cache_range = cache.range();
+        if ( !( range[0] >= cache_range[0] && range[1] <= cache_range[1] ) ) {
+
+            console.error( 'Buffer range must fall within the cache range' );
+            return;
+
+        }
+
+        if ( range[1] - range[0] == num_datasets ) {
+
+            // Fill buffer with data from cache
+            // TODO: Switch from debugging to gl
+            var cache_data = cache.data();
+            _start_id = range[0];
+            for ( var i=_start_id-cache_range[0]; i<num_datasets; ++i ) {
+
+                dbg_data[ _index( i ) ] = _accessor( cache_data[i] );
+
+            }
+
+        } else {
+
+            console.error( 'Must fill cache with ' + num_datasets + ' datasets' );
+
+        }
 
     };
 
@@ -85,13 +125,18 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
 
     };
 
+    _cached_buffer.range( [0, num_datasets] );
+    _cached_buffer.current( 0 );
+    return _cached_buffer;
+
     function _debug () {
 
         _cached_buffer.dispatchEvent({
             type: 'debug',
             from: 'gl',
             current: _current_id,
-            cache_range: [ _start_id, _start_id + num_datasets ]
+            cache_range: [ _start_id, _start_id + num_datasets ],
+            padding: [ _start_id + _padding_left, _start_id + num_datasets - _padding_right ]
         });
 
     }
@@ -119,16 +164,47 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
 
     }
 
-    function _index ( dataset_id ) {}
+    function _index ( dataset_id ) {
+
+        return dataset_id % num_datasets;
+
+    }
+
     function _shift_left () {
-        console.log( 'shift left' );
+
+        if ( typeof _shift_size === 'undefined' ) {
+            console.error( 'Unable to shift, shift size undefined' );
+            return;
+        }
+
+        _start_id -= _shift_size;
+
+        for ( var i=0; i<_shift_size; ++i ) {
+
+            var id = _start_id - i - 1;
+            dbg_data[ _index( id ) ] = cache.current( id );
+
+        }
+
     }
+
     function _shift_right () {
-        console.log( 'shift right' );
+
+        if ( typeof _shift_size === 'undefined' ) {
+            console.error( 'Unable to shift, shift size undefined' );
+            return;
+        }
+
+        _start_id += _shift_size;
+
+        for ( var i=0; i<_shift_size; ++i ) {
+
+            var id = _start_id + num_datasets + i;
+            dbg_data[ _index( id ) ] = cache.current( id );
+
+        }
+
     }
-
-
-    return _cached_buffer;
     
 }
 

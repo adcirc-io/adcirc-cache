@@ -53,7 +53,7 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
 
     };
 
-    // Returns all data currently in the cache
+    // Returns all data currently in the cache without triggering shifts
     _cache.data = function () {
         return _data;
     };
@@ -229,10 +229,10 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
 
         if ( typeof _shift_size === 'undefined' ) {
             console.error( 'Unable to shift, shift size undefined.' );
-            return _cache;
+            return;
         }
 
-        if ( _start_id + num_datasets == total_datasets ) return _cache;
+        if ( _start_id + num_datasets == total_datasets ) return;
 
         var num_to_read = _shift_size;
         var end = _start_id + num_datasets + _shift_size;
