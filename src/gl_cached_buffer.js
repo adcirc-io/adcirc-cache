@@ -10,6 +10,7 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
     var _shift_size = 1;
     var _padding_left = 1;
     var _padding_right = 2;
+    var _total_datasets = cache.total_datasets();
 
     var dbg_data = new Array( num_datasets );
 
@@ -35,6 +36,9 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
         // Return if no change
         if ( dataset_id == _current_id ) return [ _index( dataset_id ), _index( dataset_id ) + dataset_size ];
 
+        // Set the current dataset in the cache as early as possible
+        cache.current( dataset_id );
+
         // If the dataset is somewhere in the gl_buffer, returns the range to render
         if ( dataset_id >= _start_id && dataset_id < _start_id + num_datasets ) {
 
@@ -46,11 +50,8 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
                 _shift_right();
             }
 
-            cache.current( dataset_id );
             _current_id = dataset_id;
             _debug();
-
-            console.log( dbg_data );
 
             return [ _index( dataset_id ), _index( dataset_id ) + dataset_size ];
         }
@@ -64,10 +65,33 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
 
     };
 
-    _cached_buffer.left_padding = function ( padding ) {
+    // Get or set the left padding
+    _cached_buffer.padding_left = function ( padding ) {
 
-        // If we load a dataset within padding datasets of the left edge,
-        // shift the gl_buffer cache to the left
+        if ( !arguments.length ) return _padding_left;
+
+        if ( padding >= 0 && padding <= num_datasets-_padding_right-1 ) {
+            _padding_left = padding;
+        } else {
+            console.warn( 'Invalid left padding' );
+        }
+
+        return _cached_buffer;
+
+    };
+
+    // Get or set the right padding
+    _cached_buffer.padding_right = function ( padding ) {
+
+        if ( !arguments.length ) return _padding_right;
+
+        if ( padding >= 0 && padding <= num_datasets-_padding_left-1 ) {
+            _padding_right = padding+1;
+        } else {
+            console.warn( 'Invalid right padding' );
+        }
+
+        return _cached_buffer;
 
     };
 
@@ -104,20 +128,13 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
 
     };
 
-    _cached_buffer.right_padding = function ( padding ) {
-
-        // If we load a dataset within padding datasets of the right edge,
-        // shift the gl_buffer cache to the right
-
-    };
-
     _cached_buffer.shift_size = function ( shift_size ) {
 
         if ( !arguments.length ) return _shift_size;
 
-        if ( shift_size > buffer.shift_size() ) {
-            console.warn( 'Maximum shift size is ' + buffer.shift_size() + '. Using maximum.' );
-            shift_size = buffer.shift_size();
+        if ( shift_size > cache.shift_size() ) {
+            console.warn( 'Maximum shift size is ' + cache.shift_size() + '. Using maximum.' );
+            shift_size = cache.shift_size();
         }
 
         _shift_size = shift_size;
@@ -138,6 +155,20 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
             cache_range: [ _start_id, _start_id + num_datasets ],
             padding: [ _start_id + _padding_left, _start_id + num_datasets - _padding_right ]
         });
+
+    }
+
+    function _fetch ( range ) {
+
+        // var data = cache.data( range );
+        // for ( var i=0; i<range[1]-range[0]; ++i ) {
+        //     _set( range[0] + i, data[i] );
+        // }
+
+        for ( var i=range[0]; i<range[1]; ++i ) {
+            var data = cache.current( i );
+            _set( i, data );
+        }
 
     }
 
@@ -170,6 +201,12 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
 
     }
 
+    function _set ( dataset_id, data ) {
+
+        dbg_data[ _index( dataset_id ) ] = data;
+
+    }
+
     function _shift_left () {
 
         if ( typeof _shift_size === 'undefined' ) {
@@ -177,14 +214,21 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
             return;
         }
 
-        _start_id -= _shift_size;
+        if ( _start_id == 0 ) return;
 
-        for ( var i=0; i<_shift_size; ++i ) {
+        var num_to_read = _shift_size;
+        var start = _start_id - num_to_read;
 
-            var id = _start_id - i - 1;
-            dbg_data[ _index( id ) ] = cache.current( id );
-
+        if ( start < 0 ) {
+            num_to_read += start;
+            start = 0;
         }
+
+        var end = start + num_to_read;
+        var range = [ start, end ];
+
+        _start_id -= num_to_read;
+        _fetch( range );
 
     }
 
@@ -195,14 +239,23 @@ function gl_cached_buffer ( gl, buffer, cache, num_datasets, dataset_size ) {
             return;
         }
 
-        _start_id += _shift_size;
+        if ( _start_id + num_datasets == _total_datasets ) return;
 
-        for ( var i=0; i<_shift_size; ++i ) {
+        var num_to_read = _shift_size;
+        var end = _start_id + num_datasets + _shift_size;
 
-            var id = _start_id + num_datasets + i;
-            dbg_data[ _index( id ) ] = cache.current( id );
+        if ( end > _total_datasets ) {
+
+            num_to_read -= ( end - _total_datasets );
+            end = _total_datasets;
 
         }
+
+        var start = end - num_to_read;
+        var range = [ start, end ];
+
+        _start_id += num_to_read;
+        _fetch( range );
 
     }
     

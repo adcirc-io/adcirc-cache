@@ -25,7 +25,7 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
 
         if ( !arguments.length ) return _current_id;
 
-        if ( dataset_id >= _start_id && dataset_id < _start_id + num_datasets ) {
+        // if ( dataset_id >= _start_id && dataset_id < _start_id + num_datasets ) {
 
             // Check if we need to do a local shift
             if ( dataset_id < _start_id + _padding_left ) {
@@ -45,20 +45,30 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
 
             }
 
+        // } else {
+        //
+        //     console.error('Dataset ' + dataset_id + ' is not in the cache');
+        //
+        // }
+
+    };
+
+    // Returns all data currently in the cache (or within a range) without triggering shifts
+    _cache.data = function ( range ) {
+        if ( !arguments.length ) return _data;
+        if ( range[0] >= _start_id && range[1] <= _start_id+num_datasets ) {
+            var dat = [];
+            for ( var i=range[0]; i<range[1]; ++i ) {
+                dat = dat.concat( _data[_index(i)] );
+            }
+            return dat;
         } else {
-
-            console.error('Dataset ' + dataset_id + ' is not in the cache');
-
+            console.log( range );
+            console.log( [_start_id, _start_id+num_datasets] );
         }
-
     };
 
-    // Returns all data currently in the cache without triggering shifts
-    _cache.data = function () {
-        return _data;
-    };
-
-    // Get or set the current left padding
+    // Get or set the left padding
     _cache.padding_left = function ( padding ) {
 
         if ( !arguments.length ) return _padding_left;
@@ -68,6 +78,7 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
         } else {
             console.warn( 'Invalid left padding' );
         }
+
         return _cache;
     };
 
@@ -81,6 +92,7 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
         } else {
             console.warn( 'Invalid right padding' );
         }
+
         return _cache;
     };
 
@@ -132,6 +144,11 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
         _shift_size = shift_size;
         return _cache;
 
+    };
+
+    // Get the total number of datasets
+    _cache.total_datasets = function () {
+        return total_datasets;
     };
 
     // Initialize
@@ -200,10 +217,10 @@ function cache ( num_datasets, total_datasets, getter, is_async ) {
 
         if ( typeof _shift_size === 'undefined' ) {
             console.error( 'Unable to shift, shift size undefined.' );
-            return _cache;
+            return;
         }
 
-        if ( _start_id == 0 ) return _cache;
+        if ( _start_id == 0 ) return;
 
         var num_to_read = _shift_size;
         var start = _start_id - num_to_read;

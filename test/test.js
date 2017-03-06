@@ -1,5 +1,5 @@
-var dataset_size = 27;
-var cache_size = 9;
+var dataset_size = 50;
+var cache_size = 30;
 
 
 var bar = d3.select( '#bar' )
@@ -10,13 +10,16 @@ var bars;
 var cache = adcirc
     .cache( cache_size, dataset_size, dummy, false )
     .addEventListener( 'debug', display_cache )
-    .padding_left( 2 )
-    .padding_right( 2 )
-    .shift_size( 4 );
+    .padding_left( 5 )
+    .padding_right( 5 )
+    .shift_size( 5 );
 
 var gl_cache = adcirc
-    .gl_cached_buffer( 0, 0, cache, 3, 1 )
-    .addEventListener( 'debug', display_cache );
+    .gl_cached_buffer( 0, 0, cache, 30, 5 )
+    .addEventListener( 'debug', display_cache )
+    .padding_left( 5 )
+    .padding_right( 5 )
+    .shift_size( 1 );
 
 
 var current = 0;
@@ -49,7 +52,6 @@ function display_cache ( e ) {
 
     if ( e.from == 'cache' ) {
 
-        cache.print();
         bars = display_data(e.data_range);
 
         color_cache( bars, e.cache_range );
@@ -61,8 +63,8 @@ function display_cache ( e ) {
     if ( e.from == 'gl' ) {
 
         var gl_bars = color_gl( bars, e.cache_range );
-        console.log( gl_bars.each( function ( d ) { console.log( 'fart: ' + d ); } ));
-        color_gl_padding( gl_bars, e.padding )
+        color_gl_padding( gl_bars, e.padding );
+        color_current( bars, e.current );
 
     }
 
@@ -86,8 +88,6 @@ function color_gl ( selection, range ) {
 }
 
 function color_gl_padding ( selection, range ) {
-
-    console.log( range );
 
     selection.each( function ( d ) {
 
