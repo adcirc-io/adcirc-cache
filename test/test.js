@@ -246,6 +246,23 @@ function render () {
 //     .print( 'async' );
 //
 //
+
+function get_data ( range, set ) {
+
+    for ( var i=range[0]; i<range[1]; ++i ) {
+
+        (function ( ts ) {
+
+            d3.timeout( function () { set( ts, ts ); }, 500*Math.random() );
+
+        })( i );
+
+    }
+
+}
+
+get_data( [0, 5], function ( ts, data ) { console.log( ts, data ); } );
+
 function dummy ( range ) {
     var data = [];
     for ( var i=range[0]; i<range[1]; ++i ) {
