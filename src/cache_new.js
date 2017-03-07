@@ -272,17 +272,18 @@ function cache ( label ) {
 
         var dataset_index = _start_index;
 
-        var calls = 0;
+        // var calls = 0;
 
         // If the dataset is invalid, we assume that a request
         // has already been put in to load it, so we'll wait
         while ( !_valid[ _index( dataset_index ) ] ) {
 
             console.warn( label + ': Blocking...waiting for ' + dataset_index + ' from take left' );
-            if ( ++calls > 1000 ) {
-                console.error( 'Waiting for too long' );
-                break;
-            }
+
+            // if ( ++calls > 1000 ) {
+            //     console.error( 'Waiting for too long' );
+            //     break;
+            // }
 
         }
 
@@ -304,7 +305,7 @@ function cache ( label ) {
 
         var dataset_index = _start_index + _size - 1;
 
-        var calls = 0;
+        // var calls = 0;
 
         // If the dataset is invalid, we assume that a request
         // has already been put in to load it, so we'll wait
@@ -312,10 +313,10 @@ function cache ( label ) {
 
             console.warn( label + ': Blocking...waiting for ' + dataset_index + ' from take right' );
 
-            if ( ++calls > 1000 ) {
-                console.error( 'Waited too long' );
-                break;
-            }
+            // if ( ++calls > 1000 ) {
+            //     console.error( 'Waited too long' );
+            //     break;
+            // }
 
         }
 

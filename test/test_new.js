@@ -2,17 +2,19 @@
 var gl_buffer_size = 100;
 var size = 40;
 var current;
+var left_worker = new Worker( './test_worker.js' );
+var right_worker = new Worker( './test_worker.js' );
 
 var left = cache( ' left' )
     .size( 10 )
     .max_size( size )
-    .getter( load_dataset )
+    .getter( left_load_dataset )
     .range( [0, 10] );
 
 var right = cache( 'right' )
     .size( 10 )
     .max_size( size )
-    .getter( load_dataset )
+    .getter( right_load_dataset )
     .range( [10, 20] );
 
 var gl_cache = cache( '   gl' )
@@ -30,16 +32,43 @@ setTimeout( function () {
     current = 0;
 }, 1000 );
 
-function load_dataset ( dataset_id, callback ) {
 
-    var random_load_time = Math.random() * 500;
 
-    setTimeout( function () {
+left_worker.addEventListener( 'message', function ( message ) {
 
-        callback( dataset_id, dataset_id );
+    message = message.data;
+    left.set( message.dataset, message.value );
 
-    }, random_load_time);
+});
 
+right_worker.addEventListener( 'message', function ( message ) {
+
+    message = message.data;
+    right.set( message.dataset, message.value );
+
+});
+
+function left_load_dataset ( dataset_id ) {
+
+    left_worker.postMessage({
+        dataset: dataset_id
+    });
+
+    // var random_load_time = Math.random() * 500;
+    //
+    // setTimeout( function () {
+    //
+    //     callback( dataset_id, dataset_id );
+    //
+    // }, random_load_time);
+
+}
+
+function right_load_dataset ( dataset_id ) {
+
+    right_worker.postMessage({
+        dataset: dataset_id
+    });
 }
 
 function gl_transform ( index, dataset ) {
