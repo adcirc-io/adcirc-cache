@@ -1,1 +1,1 @@
-// export { cache } from './src/cache_new'
+export { cache } from './src/cache'
