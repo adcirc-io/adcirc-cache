@@ -159,9 +159,11 @@ function move_left () {
 
 function set_current ( index ) {
 
+    console.log( 'Requesting ' + index );
     var data = gl_cache.get( index );
 
     if ( data ) {
+        console.log( data );
         current = index;
         console.log('GL buffer range [' + data[ 0 ] + ', ' + data[ 1 ] + '] contains data from dataset ' + index);
     }

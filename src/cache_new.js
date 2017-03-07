@@ -66,8 +66,14 @@ function cache ( label ) {
 
         if ( dataset_index == _start_index + _size ) {
 
-            _cache.shift_right();
-            return _data[ _index( dataset_index ) ];
+            if ( _cache.shift_right() ) {
+                return _data[ _index( dataset_index ) ];
+            }
+            return null;
+
+            // return _valid[ _index( dataset_index ) ] ?
+            //     _data[ _index( dataset_index ) ] :
+            //     null;
 
         }
 
@@ -151,6 +157,8 @@ function cache ( label ) {
     // Sets the dataset at dataset_index to dataset
     _cache.set = function ( dataset_index, dataset ) {
 
+        console.log( 'Setting ' + dataset_index + ': [' + _cache.range()[0] + ',' + _cache.range()[1] + ']' );
+
         if ( dataset_index >= _start_index && dataset_index < _start_index + _size ) {
 
             _data[ _index( dataset_index ) ] = _transform( _index( dataset_index), dataset );
@@ -231,13 +239,23 @@ function cache ( label ) {
         var dataset_index = _start_index + _size;
 
         if ( dataset_index > _max_size ) {
-            return;
+            return false;
         }
 
-        // Since we're shifting right, we'll invalidate the leftmost dataset
-        _valid[ _index( _start_index ) ] = false;
+        // If there is a cache to the right, make sure that it has
+        // the next dataset before attempting to shift
+        if ( _cache_right && !_cache_right.valid( dataset_index ) ) {
+            console.log( 'RIGHT CACHE DOESN\'T HAVE DATA YET' );
+            return false;
+        }
 
-        // If there's a cache to the left, tell it to shift left as well.
+        // Since we're shifting we'll invalidate both ends until they
+        // are loaded
+        _valid[ _index( _start_index ) ] = false;
+        _valid[ _index( dataset_index ) ] = false;
+        _start_index = _start_index + 1;
+
+        // If there's a cache to the left, tell it to shift right as well.
         if ( _cache_left && _start_index >= _cache_left.range()[1] ) {
             _cache_left.shift_right();
         }
@@ -247,8 +265,7 @@ function cache ( label ) {
         // If there isn't a cache to the right, load that dataset using getter
         if ( _cache_right ) {
 
-            // Set the data
-            _start_index = _start_index + 1;
+            // Take the data from the left of the right cache
             _cache.set( dataset_index, _cache_right.take_left() );
 
 
@@ -258,10 +275,11 @@ function cache ( label ) {
             // loaded using getter, which is potentially asynchronous.
             // The getter will set the _valid value to true when data is
             // loaded.
-            _start_index = _start_index + 1;
             _getter( dataset_index, _cache.set );
 
         }
+
+        return true;
 
     };
 
@@ -276,19 +294,21 @@ function cache ( label ) {
 
         // If the dataset is invalid, we assume that a request
         // has already been put in to load it, so we'll wait
-        while ( !_valid[ _index( dataset_index ) ] ) {
+        // while ( !_valid[ _index( dataset_index ) ] ) {
 
-            console.warn( label + ': Blocking...waiting for ' + dataset_index + ' from take left' );
+            // console.warn( label + ': Blocking...waiting for ' + dataset_index + ' from take left' );
 
             // if ( ++calls > 1000 ) {
             //     console.error( 'Waiting for too long' );
             //     break;
             // }
 
-        }
+        // }
 
         // Keep a reference to the dataset
-        var dataset = _data[ _index( dataset_index ) ];
+        var dataset = _valid[ _index( dataset_index ) ] ?
+            _data[ _index( dataset_index ) ] :
+            null;
 
         // Trigger a right shift
         _cache.shift_right();
