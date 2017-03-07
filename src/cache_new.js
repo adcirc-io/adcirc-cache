@@ -1,5 +1,5 @@
 
-function cache () {
+function cache ( label ) {
 
     var _cache = Object.create( null );
     var _cache_left;
@@ -52,7 +52,7 @@ function cache () {
 
         }
 
-        if ( dataset_index < 0 || dataset_index >= _start_index + _size ) {
+        if ( dataset_index < 0 || dataset_index >= _max_size ) {
             console.error( dataset_index + ' is outside allowable range' );
             return;
         }
@@ -87,11 +87,65 @@ function cache () {
         return _cache;
     };
 
+    // Returns true if all data in the cache is valid, false otherwise
+    _cache.is_full = function () {
+        return _data &&
+            _valid.map( function ( d ) { return d ? 1 : 0; } ).reduce( function ( a, b ) { return a + b; }, 0 ) == _size;
+    };
+
     // Define the upper bound of the total available datasets
     _cache.max_size = function ( _ ) {
         if ( !arguments.length ) return _max_size;
         _max_size = _;
         return _cache;
+    };
+
+    // Prints the cached data to the console
+    _cache.print = function () {
+        console.log( _data );
+    };
+
+    // Define the range of data currently held by this cache.
+    // If left and right caches and getters have been defined,
+    // they will be used to fetch data.
+    _cache.range = function ( _ ) {
+
+        if ( !arguments.length ) return [ _start_index, _start_index + _size ];
+        if ( !_is_initialized() ) {
+            console.error( 'Cache not yet initialized. Set size and accessors before range' );
+            return;
+        }
+        if ( _[1] - _[0] !== _size ) {
+            console.error( 'Invalid range for cache of size ' + _size );
+            return;
+        }
+
+        _start_index = _[0];
+
+        for ( var i=_start_index; i<_start_index + _size; ++i ) {
+
+            if ( _cache_left && i >= _cache_left.range()[0] && i < _cache_left.range()[1] ) {
+
+                _cache.set( i, _cache_left.get( i ) );
+
+            }
+
+            else if ( _cache_right && i >= _cache_right.range()[0] && i < _cache_right.range()[1] ) {
+
+                _cache.set( i, _cache_right.get( i ) );
+
+            }
+
+            else {
+
+                _getter( i, _cache.set );
+
+            }
+
+        }
+
+        return _cache;
+
     };
 
     // Sets the dataset at dataset_index to dataset
@@ -135,15 +189,15 @@ function cache () {
         var dataset_index = _start_index - 1;
 
         if ( dataset_index < 0 ) {
-            console.error( dataset_index + ' is outside allowable range' );
             return;
         }
 
         // Since we're shifting left, we'll invalidate the rightmost dataset
         _valid[ _index( _start_index + _size - 1 ) ] = false;
 
-        // If there's a cache to the right, tell it to shift left as well.
-        if ( _cache_right ) {
+        // If there's a cache to the right, tell it to shift left
+        // but only if it doesn't already contain the dataset we're leaving behind
+        if ( _cache_right && _start_index + _size - 1 < _cache_right.range()[0] ) {
             _cache_right.shift_left();
         }
 
@@ -166,12 +220,6 @@ function cache () {
             _start_index = dataset_index;
             _getter( dataset_index, _cache.set );
 
-            while ( !_valid[ _index( dataset_index ) ] ) {
-
-                console.warn( 'Blocking...' );
-
-            }
-
         }
 
     };
@@ -183,7 +231,6 @@ function cache () {
         var dataset_index = _start_index + _size;
 
         if ( dataset_index > _max_size ) {
-            console.error( dataset_index + ' is outside allowable range' );
             return;
         }
 
@@ -191,18 +238,18 @@ function cache () {
         _valid[ _index( _start_index ) ] = false;
 
         // If there's a cache to the left, tell it to shift left as well.
-        if ( _cache_left ) {
+        if ( _cache_left && _start_index >= _cache_left.range()[1] ) {
             _cache_left.shift_right();
         }
 
         // Here we are requesting the dataset to the right
         // If there is a cache to the right, take the data from that cache.
-        // If there isn't a cache to the left, load that dataset using getter
-        if ( _cache_left ) {
+        // If there isn't a cache to the right, load that dataset using getter
+        if ( _cache_right ) {
 
             // Set the data
-            _start_index = dataset_index;
-            _cache.set( dataset_index, _cache_left.take_left() );
+            _start_index = _start_index + 1;
+            _cache.set( dataset_index, _cache_right.take_left() );
 
 
         } else {
@@ -211,14 +258,8 @@ function cache () {
             // loaded using getter, which is potentially asynchronous.
             // The getter will set the _valid value to true when data is
             // loaded.
-            _start_index = dataset_index;
+            _start_index = _start_index + 1;
             _getter( dataset_index, _cache.set );
-
-            while ( !_valid[ _index( dataset_index ) ] ) {
-
-                console.warn( 'Blocking...' );
-
-            }
 
         }
 
@@ -231,11 +272,17 @@ function cache () {
 
         var dataset_index = _start_index;
 
+        var calls = 0;
+
         // If the dataset is invalid, we assume that a request
         // has already been put in to load it, so we'll wait
         while ( !_valid[ _index( dataset_index ) ] ) {
 
-            console.warn( 'Blocking...' );
+            console.warn( label + ': Blocking...waiting for ' + dataset_index + ' from take left' );
+            if ( ++calls > 1000 ) {
+                console.error( 'Waiting for too long' );
+                break;
+            }
 
         }
 
@@ -257,11 +304,18 @@ function cache () {
 
         var dataset_index = _start_index + _size - 1;
 
+        var calls = 0;
+
         // If the dataset is invalid, we assume that a request
         // has already been put in to load it, so we'll wait
         while( !_valid[ _index( dataset_index ) ] ) {
 
-            console.log( 'Blocking...' );
+            console.warn( label + ': Blocking...waiting for ' + dataset_index + ' from take right' );
+
+            if ( ++calls > 1000 ) {
+                console.error( 'Waited too long' );
+                break;
+            }
 
         }
 
@@ -276,10 +330,21 @@ function cache () {
 
     };
 
+    // Returns whether the dataset at that index is actually
+    // loaded into the cache yet.
+    _cache.valid = function ( dataset_index ) {
+        return _valid[ _index( dataset_index ) ];
+    };
+
 
     // Default transform
     _transform = function ( index, dataset ) {
         return dataset;
+    };
+
+    // No default getter
+    _getter = function () {
+        console.error( 'A getter has not been defined for this cache.' );
     };
 
     return _cache;
@@ -314,4 +379,4 @@ function cache () {
 
 }
 
-export { cache }
+// export { cache }
