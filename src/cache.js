@@ -15,6 +15,9 @@ function cache () {
     var _valid;
     var _start_index;
 
+    var _initialized = false;
+    var _on_ready = [];
+
 
     // Define the cache located to the left of this cache
     _cache.cache_left = function ( _ ) {
@@ -154,6 +157,12 @@ function cache () {
 
     };
 
+    // Add a callback to be called once the cache has been filled
+    _cache.on_ready = function ( _ ) {
+        if ( typeof _ === 'function' ) _on_ready.push( _ );
+        return _cache;
+    };
+
     // Sets the dataset at dataset_index to dataset
     _cache.set = function ( dataset_index, dataset ) {
 
@@ -161,6 +170,13 @@ function cache () {
 
             _data[ _index( dataset_index ) ] = _transform( _index( dataset_index), dataset );
             _valid[ _index( dataset_index ) ] = true;
+
+            if ( !_initialized && _cache.is_full() ) {
+                _initialized = true;
+                for ( var i=0; i<_on_ready.length; ++i ) {
+                    _on_ready[i]();
+                }
+            }
 
         } else {
 
