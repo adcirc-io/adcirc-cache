@@ -11,6 +11,7 @@ function cache () {
     var _size;
 
     var _getter;
+    var _has_getter;
     var _transform;
 
     var _data;
@@ -47,14 +48,7 @@ function cache () {
             return;
         }
 
-        if ( dataset_index >= _start_index && dataset_index < _start_index + _size ) {
-
-            if ( !_valid[ _index( dataset_index ) ] ) {
-
-                console.error( 'Invalid data in buffer.' );
-                return;
-
-            }
+        if ( _cache.valid( dataset_index ) ) {
 
             return _data[ _index( dataset_index ) ];
 
@@ -78,6 +72,7 @@ function cache () {
         if ( dataset_index == _start_index + _size ) {
 
             if ( _cache.shift_right() ) {
+
                 return _data[ _index( dataset_index ) ];
             }
 
@@ -96,7 +91,10 @@ function cache () {
     // the data.
     _cache.getter = function ( _ ) {
         if ( !arguments.length ) return _getter;
-        if ( typeof _ === 'function' ) _getter = _;
+        if ( typeof _ === 'function' ) {
+            _getter = _;
+            _has_getter = true;
+        }
         else console.error( 'Getter must be a function' );
         return _cache;
     };
@@ -219,8 +217,8 @@ function cache () {
             }
 
             // Otherwise, if there's a left cache and we're inside of it
-            // just get the value from that cache
-            else if ( _cache_left.contains( dataset_index ) ) {
+            // just get the value from that cache, as long as that value is loaded
+            else if ( _cache_left.valid( dataset_index ) ) {
 
                 // Get the data from the left cache
                 data = _cache_left.get( dataset_index );
@@ -245,8 +243,8 @@ function cache () {
             }
 
             // Otherwise, if theres a right cache and we're inside of it
-            // just get the value from that cache
-            else if ( _cache_right.contains( dataset_index ) ) {
+            // just get the value from that cache, as long as that value is loaded
+            else if ( _cache_right.valid( dataset_index ) ) {
 
                 // Get the data from the right cache
                 data = _cache_right.get( dataset_index );
@@ -256,7 +254,7 @@ function cache () {
         }
 
         // Check that we've got data or a method to get the data
-        if ( typeof data === 'undefined' && !_getter ) return false;
+        if ( typeof data === 'undefined' && !_has_getter ) return false;
 
         // Now perform the shift and invalidate the new data
         _start_index = dataset_index;
@@ -298,8 +296,8 @@ function cache () {
             }
 
             // Otherwise if there's a right cache and we're inside of it
-            // just get the value from that cache
-            else if ( _cache_right.contains( dataset_index ) ) {
+            // just get the value from that cache, as long as that value is loaded
+            else if ( _cache_right.valid( dataset_index ) ) {
 
                 // Get the data from the right cache
                 data = _cache_right.get( dataset_index );
@@ -324,8 +322,8 @@ function cache () {
             }
 
             // Otherwise, if there's a left cache and we're inside of it
-            // just get the value from that cache
-            else if ( _cache_left.contains( dataset_index ) ) {
+            // just get the value from that cache, as long as that value is loaded
+            else if ( _cache_left.valid( dataset_index ) ) {
 
                 // Get the data from the left cache
                 data = _cache_left.get( dataset_index );
@@ -335,7 +333,7 @@ function cache () {
         }
 
         // Check that we've got data or a method to get the data
-        if ( typeof data === 'undefined' && !_getter ) return false;
+        if ( typeof data === 'undefined' && !_has_getter ) return false;
 
         // Now perform the shift and invalidate the new data
         _start_index = _start_index + 1;
@@ -352,9 +350,9 @@ function cache () {
 
     };
 
-    // Returns the leftmost data in the cache and triggers
-    // a right shift. Synchronous, will ensure leftmost data
-    // is present before returning it.
+    // Returns the leftmost data in the cache if valid and triggers
+    // a right shift. Returns undefined without triggering a shift
+    // if the leftmost data is not valid.
     _cache.take_left = function () {
 
         var dataset;
@@ -374,9 +372,9 @@ function cache () {
 
     };
 
-    // Returns the rightmost data in the cache and triggers
-    // a left shift. Synchronous, will ensure rightmost data
-    // is present before returning it.
+    // Returns the rightmost data in the cache if valid and triggers
+    // a left shift. Returns undefined without triggering a shift
+    // if the rightmost data is not valid.
     _cache.take_right = function () {
 
         // Only allow the data to be taken if it is valid
@@ -400,7 +398,7 @@ function cache () {
     // Returns whether the dataset at that index is actually
     // loaded into the cache yet.
     _cache.valid = function ( dataset_index ) {
-        return _valid[ _index( dataset_index ) ];
+        return _cache.contains( dataset_index ) && _valid[ _index( dataset_index ) ];
     };
 
 
@@ -436,13 +434,7 @@ function cache () {
             return false;
         }
 
-        if (
-            (
-                typeof _cache_left === 'undefined' ||
-                typeof _cache_right === 'undefined'
-            ) &&
-            typeof _getter === 'undefined'
-        ) {
+        if ( ( typeof _cache_left === 'undefined' || typeof _cache_right === 'undefined') && !_has_getter ) {
             console.error( 'A getter must be defined if cache is not bounded by other caches' );
             return false;
         }

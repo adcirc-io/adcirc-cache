@@ -5,19 +5,19 @@ var current;
 var left_worker = new Worker( './test_worker.js' );
 var right_worker = new Worker( './test_worker.js' );
 
-var left = adcirc.cache()
+var left = adcirc.cache( 'LEFT' )
     .size( 10 )
     .max_size( size )
     .getter( left_load_dataset )
     .range( [0, 10] );
 
-var right = adcirc.cache()
+var right = adcirc.cache( 'RIGHT' )
     .size( 10 )
     .max_size( size )
     .getter( right_load_dataset )
     .range( [10, 20] );
 
-var gl_cache = adcirc.cache()
+var gl_cache = adcirc.cache( 'GL' )
     .size( 1 )
     .max_size( size )
     .cache_left( left )
