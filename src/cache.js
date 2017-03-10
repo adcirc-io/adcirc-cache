@@ -32,8 +32,14 @@ function cache () {
         return _cache;
     };
 
-    // Synchronous function guaranteed to return loaded
-    // dataset.
+    // Returns true if the dataset index currently falls
+    // inside the cache, false otherwise
+    _cache.contains = function ( dataset_index ) {
+        return dataset_index >= _start_index && dataset_index < _start_index + _size;
+    };
+
+    // Returns the dataset at the given index if it is loaded,
+    // otherwise returns undefined.
     _cache.get = function ( dataset_index ) {
 
         if ( !_is_initialized() ) {
@@ -131,13 +137,13 @@ function cache () {
 
         for ( var i=_start_index; i<_start_index + _size; ++i ) {
 
-            if ( _cache_left && i >= _cache_left.range()[0] && i < _cache_left.range()[1] ) {
+            if ( _cache_left && _cache_left.contains( i ) ) {
 
                 _cache.set( i, _cache_left.get( i ) );
 
             }
 
-            else if ( _cache_right && i >= _cache_right.range()[0] && i < _cache_right.range()[1] ) {
+            else if ( _cache_right && _cache_right.contains( i ) ) {
 
                 _cache.set( i, _cache_right.get( i ) );
 
@@ -158,7 +164,7 @@ function cache () {
     // Sets the dataset at dataset_index to dataset
     _cache.set = function ( dataset_index, dataset ) {
 
-        if ( dataset_index >= _start_index && dataset_index < _start_index + _size ) {
+        if ( _cache.contains( dataset_index ) ) {
 
             _data[ _index( dataset_index ) ] = _transform( _index( dataset_index), dataset );
             _validate( dataset_index );
@@ -201,32 +207,64 @@ function cache () {
             return false;
         }
 
-        // If there's a cache to the left, and we need to shift if,
-        // we need to make sure that it can be taken from before
-        // we attempt to shift.
-        if ( _cache_left && _start_index <= _cache_left.range()[1] ) {
+        if ( _cache_left ) {
 
-            // Take the rightmost dataset from the left cache
-            data = _cache_left.take_right();
+            // If there's a cache immediately to the left, we need to steal
+            // its rightmost value and tell it to shift
+            if ( _start_index == _cache_left.range()[1] ) {
 
-            // Determine if it successfully started shifting
-            if ( typeof data === 'undefined' ) return false;
+                // Take the rightmost dataset from the left cache
+                data = _cache_left.take_right();
+
+            }
+
+            // Otherwise, if there's a left cache and we're inside of it
+            // just get the value from that cache
+            else if ( _cache_left.contains( dataset_index ) ) {
+
+                // Get the data from the left cache
+                data = _cache_left.get( dataset_index );
+
+            }
 
         }
 
-        // If there's a cache to the right, tell it to shift left
-        // if needed
-        if ( _cache_right && _start_index + _size <= _cache_right.range()[0] ) {
-            _cache_right.shift_left();
+        if ( _cache_right ) {
+
+            // If there's a cache immediately to the right, we need to
+            // tell it to shift left (as long as it isn't bumping up
+            // against a left cache)
+            if ( _start_index + _size == _cache_right.range()[0] ) {
+
+                if ( _cache_left && _cache_right.range()[0] !== _cache_left.range()[1] ) {
+
+                    _cache_right.shift_left();
+
+                }
+
+            }
+
+            // Otherwise, if theres a right cache and we're inside of it
+            // just get the value from that cache
+            else if ( _cache_right.contains( dataset_index ) ) {
+
+                // Get the data from the right cache
+                data = _cache_right.get( dataset_index );
+
+            }
+
         }
+
+        // Check that we've got data or a method to get the data
+        if ( typeof data === 'undefined' && !_getter ) return false;
 
         // Now perform the shift and invalidate the new data
         _start_index = dataset_index;
         _invalidate( _start_index );
 
-        // If there is a left cache, we've got its data. Otherwise
-        // we need to load the data asynchronously
-        if ( _cache_left )
+        // If we got the data from somewhere else, use it.
+        // Otherwise load the data asynchronously
+        if ( typeof data !== 'undefined' )
             _cache.set( dataset_index, data );
         else
             _getter( dataset_index, _cache.set );
@@ -244,28 +282,60 @@ function cache () {
         var dataset_index = _start_index + _size;
 
         // Stop shifting if there isn't one
-        if ( dataset_index > _max_size ) {
+        if ( dataset_index >= _max_size ) {
             return false;
         }
 
-        // If there's a cache to the right and we need to shift it,
-        // we need to make sure that it can be taken from before we
-        // attempt to shift.
-        if ( _cache_right && _start_index + _size >= _cache_right.range()[0] ) {
+        if ( _cache_right ) {
 
-            // Take the leftmost dataset from the right cache
-            data = _cache_right.take_left();
+            // If there's a cache immediately to the right, we need to steal
+            // its leftmost value and tell it to shift
+            if ( dataset_index == _cache_right.range()[0] ) {
 
-            // Determine if it successfully started shifting
-            if ( typeof data === 'undefined' ) return false;
+                // Take the leftmost dataset from the right cache
+                data = _cache_right.take_left();
+
+            }
+
+            // Otherwise if there's a right cache and we're inside of it
+            // just get the value from that cache
+            else if ( _cache_right.contains( dataset_index ) ) {
+
+                // Get the data from the right cache
+                data = _cache_right.get( dataset_index );
+
+            }
 
         }
 
-        // If there's a cache to the left, tell it to shift right
-        // if needed
-        if ( _cache_left && _start_index >= _cache_left.range()[1] ) {
-            _cache_left.shift_right();
+        if ( _cache_left ) {
+
+            // If there's a cache immediately to the left, we need to
+            // tell it to shift right (as long as it isn't bumping up
+            // against a right cache)
+            if ( _start_index == _cache_left.range()[1] ) {
+
+                if ( _cache_right && _cache_right.range()[0] !== _cache_left.range()[1] ) {
+
+                    _cache_left.shift_right();
+
+                }
+
+            }
+
+            // Otherwise, if there's a left cache and we're inside of it
+            // just get the value from that cache
+            else if ( _cache_left.contains( dataset_index ) ) {
+
+                // Get the data from the left cache
+                data = _cache_left.get( dataset_index );
+
+            }
+
         }
+
+        // Check that we've got data or a method to get the data
+        if ( typeof data === 'undefined' && !_getter ) return false;
 
         // Now perform the shift and invalidate the new data
         _start_index = _start_index + 1;
