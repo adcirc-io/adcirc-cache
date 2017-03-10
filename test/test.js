@@ -18,7 +18,7 @@ var right = adcirc.cache()
     .range( [10, 20] );
 
 var gl_cache = adcirc.cache()
-    .size( 10 )
+    .size( 1 )
     .max_size( size )
     .cache_left( left )
     .cache_right( right )
@@ -27,7 +27,7 @@ var gl_cache = adcirc.cache()
 setTimeout( function () {
     left.print();
     right.print();
-    gl_cache.range( [0, 10] )
+    gl_cache.range( [0, 1] )
         .print();
     current = 0;
 }, 1000 );

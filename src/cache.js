@@ -1,7 +1,9 @@
+import { dispatcher } from '../../adcirc-events/index'
 
 function cache () {
 
-    var _cache = Object.create( null );
+    var _cache = dispatcher();
+
     var _cache_left;
     var _cache_right;
 
@@ -13,11 +15,8 @@ function cache () {
 
     var _data;
     var _valid;
+    var _num_valid = 0;
     var _start_index;
-
-    var _initialized = false;
-    var _on_ready = [];
-
 
     // Define the cache located to the left of this cache
     _cache.cache_left = function ( _ ) {
@@ -98,8 +97,7 @@ function cache () {
 
     // Returns true if all data in the cache is valid, false otherwise
     _cache.is_full = function () {
-        return _data &&
-            _valid.map( function ( d ) { return d ? 1 : 0; } ).reduce( function ( a, b ) { return a + b; }, 0 ) == _size;
+        return _num_valid == _size;
     };
 
     // Define the upper bound of the total available datasets
@@ -157,26 +155,13 @@ function cache () {
 
     };
 
-    // Add a callback to be called once the cache has been filled
-    _cache.on_ready = function ( _ ) {
-        if ( typeof _ === 'function' ) _on_ready.push( _ );
-        return _cache;
-    };
-
     // Sets the dataset at dataset_index to dataset
     _cache.set = function ( dataset_index, dataset ) {
 
         if ( dataset_index >= _start_index && dataset_index < _start_index + _size ) {
 
             _data[ _index( dataset_index ) ] = _transform( _index( dataset_index), dataset );
-            _valid[ _index( dataset_index ) ] = true;
-
-            if ( !_initialized && _cache.is_full() ) {
-                _initialized = true;
-                for ( var i=0; i<_on_ready.length; ++i ) {
-                    _on_ready[i]();
-                }
-            }
+            _validate( dataset_index );
 
         } else {
 
@@ -194,6 +179,7 @@ function cache () {
         if ( _data ) console.warn( 'Warning: Resizing cache, all data will be lost' );
         _data = new Array( _size );
         _valid = new Array( _size ).fill( false );
+        _num_valid = 0;
         return _cache;
     };
 
@@ -215,9 +201,10 @@ function cache () {
             return false;
         }
 
-        // If there's a cache to the left, we need to make sure that
-        // it can be taken from before we attempt to shift.
-        if ( _cache_left ) {
+        // If there's a cache to the left, and we need to shift if,
+        // we need to make sure that it can be taken from before
+        // we attempt to shift.
+        if ( _cache_left && _start_index <= _cache_left.range()[1] ) {
 
             // Take the rightmost dataset from the left cache
             data = _cache_left.take_right();
@@ -229,13 +216,13 @@ function cache () {
 
         // If there's a cache to the right, tell it to shift left
         // if needed
-        if ( _cache_right && _start_index + _size - 1 < _cache_right.range()[0] ) {
+        if ( _cache_right && _start_index + _size <= _cache_right.range()[0] ) {
             _cache_right.shift_left();
         }
 
         // Now perform the shift and invalidate the new data
         _start_index = dataset_index;
-        _valid[ _index( _start_index ) ] = false;
+        _invalidate( _start_index );
 
         // If there is a left cache, we've got its data. Otherwise
         // we need to load the data asynchronously
@@ -261,9 +248,10 @@ function cache () {
             return false;
         }
 
-        // If there's a cache to the right, we need to make sure that
-        // it can be taken from before we attempt to shift.
-        if ( _cache_right ) {
+        // If there's a cache to the right and we need to shift it,
+        // we need to make sure that it can be taken from before we
+        // attempt to shift.
+        if ( _cache_right && _start_index + _size >= _cache_right.range()[0] ) {
 
             // Take the leftmost dataset from the right cache
             data = _cache_right.take_left();
@@ -281,7 +269,7 @@ function cache () {
 
         // Now perform the shift and invalidate the new data
         _start_index = _start_index + 1;
-        _valid[ _index( dataset_index ) ] = false;
+        _invalidate( dataset_index );
 
         // If there is a right cache, we've got its data. Otherwise
         // we need to load the data asynchronously
@@ -364,6 +352,13 @@ function cache () {
 
     }
 
+    function _invalidate ( dataset_index ) {
+
+        _valid[ _index( dataset_index ) ] = false;
+        --_num_valid;
+
+    }
+
     function _is_initialized () {
 
         if ( typeof _size === 'undefined' || typeof _max_size === 'undefined' ) {
@@ -383,6 +378,15 @@ function cache () {
         }
 
         return true;
+
+    }
+
+    function _validate ( dataset_index ) {
+
+        _valid[ _index( dataset_index ) ] = true;
+        ++_num_valid;
+
+        if ( _cache.is_full() ) _cache.dispatch( { type: 'ready' } );
 
     }
 
