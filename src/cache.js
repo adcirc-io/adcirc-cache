@@ -2,6 +2,7 @@ import { dispatcher } from '../../adcirc-events/index'
 
 function cache () {
 
+    var __test = 'test';
     var _cache = dispatcher();
 
     var _cache_left;

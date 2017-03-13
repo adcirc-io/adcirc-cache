@@ -147,6 +147,7 @@ function dispatcher ( object ) {
 
 function cache () {
 
+    var __test = 'test';
     var _cache = dispatcher();
 
     var _cache_left;
