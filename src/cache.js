@@ -1,4 +1,4 @@
-import { dispatcher } from '../../adcirc-events/index'
+import { dispatcher } from 'adcirc-events'
 
 function cache () {
 
@@ -59,7 +59,7 @@ function cache () {
             return;
         }
 
-        if ( dataset_index == _start_index - 1 ) {
+        if ( dataset_index === _start_index - 1 ) {
 
             if ( _cache.shift_left() ) {
                 return _data[ _index( dataset_index ) ];
@@ -69,7 +69,7 @@ function cache () {
 
         }
 
-        if ( dataset_index == _start_index + _size ) {
+        if ( dataset_index === _start_index + _size ) {
 
             if ( _cache.shift_right() ) {
 
@@ -101,7 +101,7 @@ function cache () {
 
     // Returns true if all data in the cache is valid, false otherwise
     _cache.is_full = function () {
-        return _num_valid == _size;
+        return _num_valid === _size;
     };
 
     // Define the upper bound of the total available datasets
@@ -209,7 +209,7 @@ function cache () {
 
             // If there's a cache immediately to the left, we need to steal
             // its rightmost value and tell it to shift
-            if ( _start_index == _cache_left.range()[1] ) {
+            if ( _start_index === _cache_left.range()[1] ) {
 
                 // Take the rightmost dataset from the left cache
                 data = _cache_left.take_right();
@@ -232,7 +232,7 @@ function cache () {
             // If there's a cache immediately to the right, we need to
             // tell it to shift left (as long as it isn't bumping up
             // against a left cache)
-            if ( _start_index + _size == _cache_right.range()[0] ) {
+            if ( _start_index + _size === _cache_right.range()[0] ) {
 
                 if ( _cache_left && _cache_right.range()[0] !== _cache_left.range()[1] ) {
 
@@ -288,7 +288,7 @@ function cache () {
 
             // If there's a cache immediately to the right, we need to steal
             // its leftmost value and tell it to shift
-            if ( dataset_index == _cache_right.range()[0] ) {
+            if ( dataset_index === _cache_right.range()[0] ) {
 
                 // Take the leftmost dataset from the right cache
                 data = _cache_right.take_left();
@@ -311,7 +311,7 @@ function cache () {
             // If there's a cache immediately to the left, we need to
             // tell it to shift right (as long as it isn't bumping up
             // against a right cache)
-            if ( _start_index == _cache_left.range()[1] ) {
+            if ( _start_index === _cache_left.range()[1] ) {
 
                 if ( _cache_right && _cache_right.range()[0] !== _cache_left.range()[1] ) {
 
